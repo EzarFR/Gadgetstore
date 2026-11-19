@@ -6,70 +6,120 @@ use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-    $products = Product::with('category')
-    ->when($request->filled('q'), function ($query) use ($request) {
-    $keyword = $request->string('q')->toString();
-    $query->where(function ($q) use ($keyword) {
-    $q->where('name','like',"%{$keyword}%")
-    ->orWhere('product_code','like',"%{$keyword}%")
-    ->orWhere('brand','like',"%{$keyword}%");
-    });
-    })
-    ->when($request->filled('category_id'),
-    fn ($q) => $q->where('category_id',$request->category_id))
-    ->latest()->paginate(10)->withQueryString();
-    $categories = Category::orderBy('name')->get();
-    return view('products.index', compact('products','categories'));
+        $products = Product::with('category')
+            ->when($request->filled('q'), function ($query) use ($request) {
+                $keyword = $request->string('q')->toString();
+
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%")
+                        ->orWhere('product_code', 'like', "%{$keyword}%")
+                        ->orWhere('brand', 'like', "%{$keyword}%");
+                });
+            })
+            ->when(
+                $request->filled('category_id'),
+                fn ($q) => $q->where('category_id', $request->category_id)
+            )
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $categories = Category::orderBy('name')->get();
+
+        return view('products.index', compact('products', 'categories'));
     }
+
     public function create()
     {
-    $categories = Category::orderBy('name')->get();
-    return view('products.create', compact('categories'));
+        $categories = Category::orderBy('name')->get();
+
+        return view('products.create', compact('categories'));
     }
+
     public function store(Request $request)
     {
-    $validated = $request->validate([
-    'category_id' => ['required','exists:categories,id'],
-    'product_code' => ['required','string','max:50','unique:products,product_code'],
-    'name' => ['required','string','max:150'],
-    'brand' => ['nullable','string','max:100'],
-    'price' => ['required','numeric','min:0'],
-    'stock' => ['required','integer','min:0'],
-    'description' => ['nullable','string','max:2000'],
-    ]);
-    Product::create($validated);
-    return redirect()->route('products.index')->with('success','Produk berhasil ditambahkan.');
+        $validated = $request->validate([
+            'category_id' => ['required', 'exists:categories,id'],
+            'product_code' => ['required', 'string', 'max:50', 'unique:products,product_code'],
+            'name' => ['required', 'string', 'max:150'],
+            'brand' => ['nullable', 'string', 'max:100'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')
+                ->store('products', 'public');
+        }
+
+        Product::create($validated);
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Produk berhasil ditambahkan.');
     }
+
     public function edit(Product $product)
     {
-    $categories = Category::orderBy('name')->get();
-    return view('products.edit', compact('product','categories'));
+        $categories = Category::orderBy('name')->get();
+
+        return view('products.edit', compact('product', 'categories'));
     }
+
     public function update(Request $request, Product $product)
     {
-    $validated = $request->validate([
-    'category_id' => ['required','exists:categories,id'],
-    'product_code' => ['required','string','max:50',Rule::unique('products','product_code')->ignore($product->id)],
-    'name' => ['required','string','max:150'],
-    'brand' => ['nullable','string','max:100'],
-    'price' => ['required','numeric','min:0'],
-    'stock' => ['required','integer','min:0'],
-    'description' => ['nullable','string','max:2000'],
-    ]);
-    $product->update($validated);
-    return redirect()->route('products.index')->with('success','Produk berhasil diperbarui.');
+        $validated = $request->validate([
+            'category_id' => ['required', 'exists:categories,id'],
+            'product_code' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('products', 'product_code')->ignore($product->id)
+            ],
+            'name' => ['required', 'string', 'max:150'],
+            'brand' => ['nullable', 'string', 'max:100'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('image')) {
+            $oldImage = $product->image;
+
+            $validated['image'] = $request->file('image')
+                ->store('products', 'public');
+
+            if ($oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+        }
+
+        $product->update($validated);
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Produk berhasil diperbarui.');
     }
+
     public function destroy(Product $product)
     {
-    $product->delete();
-    return redirect()->route('products.index')->with('success','Produk berhasil dihapus.');
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+
+        $product->delete();
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Produk berhasil dihapus.');
     }
 }

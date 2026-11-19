@@ -8,9 +8,6 @@ use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $categories = Category::withCount('products')
@@ -20,17 +17,11 @@ class CategoryController extends Controller
         return view('categories.index', compact('categories'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('categories.create');
     }
 
-    /**
-     * Store a newly created resource.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -46,17 +37,11 @@ class CategoryController extends Controller
             ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
-    /**
-     * Show the form for editing the resource.
-     */
     public function edit(Category $category)
     {
         return view('categories.edit', compact('category'));
     }
 
-    /**
-     * Update the specified resource.
-     */
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
@@ -77,9 +62,6 @@ class CategoryController extends Controller
             ->with('success', 'Kategori berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource.
-     */
     public function destroy(Category $category)
     {
         if ($category->products()->exists()) {

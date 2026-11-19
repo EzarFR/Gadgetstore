@@ -5,7 +5,7 @@
 
 <h3>Edit Kategori</h3>
 
-<form method="POST" action="{{ route('categories.update',$category) }}">
+<form method="POST" action="{{ route('categories.update',$category) }}" enctype="multipart/form-data">
     @csrf
     @method('PUT')
 
@@ -22,6 +22,38 @@
         <label>Deskripsi</label>
         <textarea name="description" class="form-control">{{ old('description',$category->description) }}</textarea>
         @error('description')
+            <div class="text-danger">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <!-- Gambar Kategori -->
+    <div class="mb-3">
+        <label>Gambar Kategori</label>
+
+        @if($category->image)
+            <div class="mb-2">
+                <img src="{{ asset('storage/' . $category->image) }}"
+                     alt="Gambar {{ $category->name }}"
+                     width="120"
+                     height="120"
+                     style="object-fit: cover; border-radius: 8px;">
+            </div>
+        @else
+            <p class="text-muted">Belum ada gambar kategori.</p>
+        @endif
+
+        <input
+            type="file"
+            name="image"
+            class="form-control"
+            accept=".jpg,.jpeg,.png"
+        >
+
+        <small class="text-muted">
+            Kosongkan jika tidak ingin mengganti gambar. Format JPG, JPEG, PNG, maksimal 2 MB.
+        </small>
+
+        @error('image')
             <div class="text-danger">{{ $message }}</div>
         @enderror
     </div>
